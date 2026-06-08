@@ -1,4 +1,3 @@
-import { MoonStar, Sparkles } from "lucide-react";
 import type { ModuleCardProps } from "@/app/registry/moduleTypes";
 import { CardFrame } from "@/app/ui/CardFrame";
 
@@ -28,7 +27,14 @@ export function PreventSleepCard({
       accent={manifest.themeColor}
       title={manifest.title}
       status={status}
-      icon={<MoonStar size={24} />}
+      icon={
+        <div className="module-mark module-mark--sleep" aria-hidden="true">
+          <i />
+          <span />
+          <span />
+          <span />
+        </div>
+      }
       isExpanded={isExpanded}
       isActive={isActive}
       settingsContent={settingsContent}
@@ -36,16 +42,11 @@ export function PreventSleepCard({
       onToggleExpand={onToggleExpand}
       switchLabel="防止休眠"
     >
-      <div className="module-preview">
-        <div className="module-preview__line">
-          <Sparkles size={16} />
-          <span>保持唤醒策略已预留，后续接入宿主 API。</span>
-        </div>
-        <div className="module-preview__chips">
-          <span>屏幕常亮</span>
-          <span>系统唤醒</span>
-          <span>工作预设</span>
-        </div>
+      <div className="module-ambient module-ambient--sleep" aria-hidden="true">
+        <i />
+        <span />
+        <span />
+        <span />
       </div>
     </CardFrame>
   );

@@ -23,11 +23,6 @@ export function DashboardPage() {
   return (
     <section className="dashboard">
       <section className="dashboard__cards-section">
-        <div className="dashboard__cards-header">
-          <p className="dashboard__eyebrow">卡片积木区</p>
-          <h2>从上往下竖向排列</h2>
-        </div>
-
         <div className="dashboard__cards-column">
           {modules.map((moduleDefinition) => (
             <div key={moduleDefinition.manifest.id} className="dashboard__grid-item">
@@ -40,21 +35,21 @@ export function DashboardPage() {
       <section className="dashboard__bay">
         <div className="dashboard__bay-header">
           <div>
-            <p className="dashboard__eyebrow">模块插槽区</p>
-            <h3>挂载规则</h3>
+            <p className="dashboard__eyebrow">System</p>
+            <h3>{"\u6302\u8f7d\u89c4\u5219"}</h3>
           </div>
           <div className="dashboard__bay-hints">
             <span>
               <LayoutGrid size={13} />
-              固定底板
+              {"\u56fa\u5b9a\u5de5\u4f5c\u677f"}
             </span>
             <span>
               <Orbit size={13} />
-              注册驱动
+              {"Registry \u9a71\u52a8"}
             </span>
             <span>
               <PanelRightOpen size={13} />
-              折叠设置
+              {"\u5361\u7247\u5185\u8054\u8bbe\u7f6e"}
             </span>
           </div>
         </div>
@@ -63,22 +58,22 @@ export function DashboardPage() {
           <div className="dashboard__metric-pill">
             <LayoutGrid size={15} />
             <div>
-              <span>已启用</span>
+              <span>{"\u5df2\u542f\u7528"}</span>
               <strong>{enabledModuleIds.length}</strong>
             </div>
           </div>
           <div className="dashboard__metric-pill">
             <Activity size={15} />
             <div>
-              <span>诊断</span>
+              <span>{"\u8bca\u65ad"}</span>
               <strong>{invalidModules.length}</strong>
             </div>
           </div>
           <div className="dashboard__metric-pill">
             <Box size={15} />
             <div>
-              <span>画板</span>
-              <strong>455 × 660</strong>
+              <span>{"\u753b\u677f"}</span>
+              <strong>455 x 660</strong>
             </div>
           </div>
         </div>

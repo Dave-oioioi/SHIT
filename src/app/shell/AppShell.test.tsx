@@ -38,4 +38,18 @@ describe("AppShell", () => {
     expect(screen.getByText("模块行为")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "自动混音 开关" })).toBeInTheDocument();
   });
+
+  it("keeps settings visibility in sync with toolset drawers", async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+
+    expect(await screen.findByRole("heading", { name: "自动混音" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "设置" }));
+    await user.click(screen.getByRole("checkbox", { name: "自动混音" }));
+    await user.click(screen.getByRole("button", { name: "主坑位" }));
+
+    expect(screen.queryByRole("heading", { name: "自动混音" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "防止休眠" })).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,3 @@
-import { SlidersHorizontal, Waves } from "lucide-react";
 import type { ModuleCardProps } from "@/app/registry/moduleTypes";
 import { CardFrame } from "@/app/ui/CardFrame";
 
@@ -28,7 +27,13 @@ export function AutoMixingCard({
       accent={manifest.themeColor}
       title={manifest.title}
       status={status}
-      icon={<Waves size={24} />}
+      icon={
+        <div className="module-mark module-mark--mix" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      }
       isExpanded={isExpanded}
       isActive={isActive}
       settingsContent={settingsContent}
@@ -36,16 +41,11 @@ export function AutoMixingCard({
       onToggleExpand={onToggleExpand}
       switchLabel="自动混音"
     >
-      <div className="module-preview">
-        <div className="module-preview__line">
-          <SlidersHorizontal size={16} />
-          <span>智能场景已预留，后续接入宿主 API。</span>
-        </div>
-        <div className="module-preview__chips">
-          <span>演示</span>
-          <span>会议</span>
-          <span>媒体</span>
-        </div>
+      <div className="module-ambient module-ambient--mix" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
       </div>
     </CardFrame>
   );
