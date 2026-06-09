@@ -9,6 +9,13 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173"
   },
+  "bundle": {
+    "active": true,
+    "targets": "nsis",
+    "icon": [
+      "icons/icon.ico"
+    ]
+  },
   "app": {
     "windows": [
       {

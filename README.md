@@ -1,20 +1,60 @@
 # SHIT VAULT
 
-SHIT VAULT is a Windows desktop tray app built with Tauri, React, TypeScript, Zustand, and Vitest.
+SHIT VAULT is a Windows desktop tray app built with Tauri, React, TypeScript, Zustand, Vitest, and Rust.
 
-The main shell is now considered complete enough to protect. Future work should focus on feature modules, starting with the real `prevent-sleep` card behavior.
+The shell is now stable product infrastructure. The first fully landed module is `prevent-sleep`, which in product terms is a desktop keepalive tool rather than a literal sleep-toggle label.
 
 ## Current State
 
 - Tray-first Windows desktop app.
 - Starts hidden and opens from the tray.
-- Tray menu: `打开`, `设置`, `退出`.
-- Main shell UI is polished and fixed at `455 x 660`.
-- Left drawer navigation contains: `主坑位`, `大便位`, `小便池`, `洗手台`.
-- `主坑位` contains `自动混音` and `防止休眠`.
-- Main logo opens the `Shit Vault` info page.
-- Module discovery is registry-driven via `import.meta.glob`.
-- Existing cards are UI shells; `prevent-sleep` does not yet call native Windows APIs.
+- Tray menu is localized in Chinese.
+- Main shell UI is fixed at `455 x 660`.
+- Bottom-right popup shell with transparent rounded window styling.
+- Left drawer navigation and card system are complete enough to protect.
+- `prevent-sleep` is now fully wired to native Windows behavior.
+- Installer packaging is enabled through Tauri NSIS bundling.
+
+## Prevent Sleep
+
+The `prevent-sleep` card is no longer a placeholder. It now runs a native Rust keepalive runtime through Tauri commands.
+
+Current behavior:
+
+- Default mode is `idle-keepalive`.
+- Default idle activation threshold is `2 minutes 30 seconds`.
+- Default repeat interval after activation is `5 seconds`.
+- Idle detection uses both keyboard and mouse inactivity.
+- Keepalive action uses the current screen and targets a bottom-left safe point with a `48px` inset.
+- The keepalive action performs a double click when the idle condition is met.
+- Continuous clicking mode is also supported.
+- Continuous clicking is gated by a hotkey and defaults to `PgDn`.
+- Press once to start continuous clicking, press again to stop.
+- Moving the mouse also stops continuous clicking.
+- Only one mode can be armed at a time.
+- Settings are locked while the card is enabled.
+- Windows execution-state API is used as a silent backup layer.
+- The card only shows inline text for real error or degraded states.
+
+## Distribution
+
+Runnable desktop executable:
+
+```text
+src-tauri/target/release/shit-vault.exe
+```
+
+NSIS installer:
+
+```text
+src-tauri/target/release/bundle/nsis/SHIT VAULT_0.1.0_x64-setup.exe
+```
+
+Helper launch script:
+
+```text
+launch-shit-vault.cmd
+```
 
 ## Documentation
 
@@ -71,24 +111,16 @@ Build a runnable exe without installer bundling:
 npm run tauri:build-exe
 ```
 
+Build the NSIS installer:
+
+```bash
+npm run tauri:build
+```
+
 If `cargo` is not available in the current PowerShell session:
 
 ```powershell
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
-```
-
-## Desktop Launch
-
-The release executable is:
-
-```text
-src-tauri/target/release/shit-vault.exe
-```
-
-The helper script is:
-
-```text
-launch-shit-vault.cmd
 ```
 
 ## Project Structure
@@ -144,12 +176,6 @@ npm run tauri:build-exe
 git diff --check
 ```
 
-## Next Feature
+## Next Focus
 
-Implement real Windows behavior for `prevent-sleep`:
-
-1. Add Tauri command(s) for enable/disable/status.
-2. Implement Windows keep-awake behavior in Rust.
-3. Wire the existing card switch to command success/failure.
-4. Show status and errors in the card.
-5. Ensure exit disables or releases keep-awake state.
+With the shell and `prevent-sleep` module landed, the next work should shift to the remaining cards and deeper desktop QA around real-world monitor layouts, scaling, tray behavior, and long-running native module reliability.
