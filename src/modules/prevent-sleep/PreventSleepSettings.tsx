@@ -1,70 +1,151 @@
+import type { ChangeEvent } from "react";
 import type { ModuleSettingsProps } from "@/app/registry/moduleTypes";
 import { SettingsSection } from "@/app/ui/SettingsSection";
 
 type PreventSleepSettingsModel = {
-  idleThresholdSeconds: number;
+  clickMode: "idle-keepalive" | "continuous";
+  idleActivationSeconds: number;
+  idleRepeatSeconds: number;
+  continuousIntervalSeconds: number;
+  continuousHotkey: string;
 };
 
-const PRESETS = [
-  { label: "30\u79d2", seconds: 30 },
-  { label: "1\u5206\u949f", seconds: 60 },
-  { label: "2\u520630\u79d2", seconds: 150 },
-  { label: "5\u5206\u949f", seconds: 300 },
-  { label: "10\u5206\u949f", seconds: 600 },
-];
+const HOTKEY_OPTIONS = ["PgDn", "PgUp", "End", "Home", "F8", "F9", "F10"] as const;
+
+function clampSeconds(value: number, fallback: number) {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.min(3600, Math.round(value)));
+}
 
 export function PreventSleepSettings({
   settings,
+  disabled = false,
   onChange,
 }: ModuleSettingsProps<PreventSleepSettingsModel>) {
-  const selectedSeconds = settings.idleThresholdSeconds;
-  const selectedLabel =
-    PRESETS.find((preset) => preset.seconds === selectedSeconds)?.label ?? "2\u520630\u79d2";
+  const updateField = <K extends keyof PreventSleepSettingsModel>(
+    key: K,
+    value: PreventSleepSettingsModel[K],
+  ) => {
+    if (disabled) {
+      return;
+    }
+
+    onChange({
+      ...settings,
+      [key]: value,
+    });
+  };
+
+  const updateSeconds =
+    (key: "idleActivationSeconds" | "idleRepeatSeconds" | "continuousIntervalSeconds") =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const current = settings[key];
+      updateField(key, clampSeconds(Number(event.target.value), current));
+    };
 
   return (
-    <SettingsSection
-      title="\u4fdd\u6d3b\u8282\u594f"
-      description="\u7a7a\u95f2\u8fbe\u5230\u8bbe\u5b9a\u65f6\u95f4\u540e\uff0c\u6267\u884c\u4e00\u6b21\u5de6\u4e0b\u89d2\u5b89\u5168\u70b9\u51fb\u5e76\u8fd8\u539f\u5149\u6807\u3002"
-    >
-      <div className="prevent-sleep-console" aria-label="\u9632\u6b62\u4f11\u7720\u8bbe\u7f6e">
-        <div className="prevent-sleep-console__readout">
-          <span>\u7a7a\u95f2\u9608\u503c</span>
-          <strong>{selectedLabel}</strong>
+    <>
+      <SettingsSection
+        title="模式"
+        description={
+          disabled
+            ? "模块运行中，先关闭卡片总开关后再调整。"
+            : settings.clickMode === "continuous"
+              ? "开启后先待命，再按快捷键开始或停止连点。"
+              : "开启后按无操作时间自动进入角落双击保活。"
+        }
+      >
+        <div className="prevent-sleep-mode">
+          <button
+            type="button"
+            className="prevent-sleep-mode__chip"
+            data-selected={settings.clickMode === "idle-keepalive"}
+            disabled={disabled}
+            onClick={() => updateField("clickMode", "idle-keepalive")}
+          >
+            空闲保活
+          </button>
+          <button
+            type="button"
+            className="prevent-sleep-mode__chip"
+            data-selected={settings.clickMode === "continuous"}
+            disabled={disabled}
+            onClick={() => updateField("clickMode", "continuous")}
+          >
+            连续点击
+          </button>
         </div>
+      </SettingsSection>
 
-        <div
-          className="prevent-sleep-presets"
-          role="radiogroup"
-          aria-label="\u7a7a\u95f2\u89e6\u53d1\u65f6\u95f4"
-        >
-          {PRESETS.map((preset) => (
-            <button
-              type="button"
-              key={preset.seconds}
-              className="prevent-sleep-preset"
-              data-selected={preset.seconds === selectedSeconds}
-              role="radio"
-              aria-checked={preset.seconds === selectedSeconds}
-              onClick={() =>
-                onChange({
-                  ...settings,
-                  idleThresholdSeconds: preset.seconds,
-                })
-              }
+      <SettingsSection title="空闲保活" description="只在模式为“空闲保活”时生效。">
+        <div className="prevent-sleep-fields">
+          <label className="prevent-sleep-field">
+            <span>多久无操作后激活</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              disabled={disabled}
+              value={settings.idleActivationSeconds}
+              onChange={updateSeconds("idleActivationSeconds")}
+              aria-label="多久无操作后激活"
+            />
+            <em>秒</em>
+          </label>
+
+          <label className="prevent-sleep-field">
+            <span>激活后每隔多久角落双击</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              disabled={disabled}
+              value={settings.idleRepeatSeconds}
+              onChange={updateSeconds("idleRepeatSeconds")}
+              aria-label="激活后每隔多久角落双击"
+            />
+            <em>秒</em>
+          </label>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="连续点击" description="只在模式为“连续点击”时生效。">
+        <div className="prevent-sleep-fields">
+          <label className="prevent-sleep-field">
+            <span>快捷键</span>
+            <select
+              disabled={disabled}
+              value={settings.continuousHotkey}
+              onChange={(event) => updateField("continuousHotkey", event.target.value)}
+              aria-label="连续点击快捷键"
             >
-              {preset.label}
-            </button>
-          ))}
-        </div>
+              {HOTKEY_OPTIONS.map((hotkey) => (
+                <option key={hotkey} value={hotkey}>
+                  {hotkey}
+                </option>
+              ))}
+            </select>
+            <em>键</em>
+          </label>
 
-        <div className="prevent-sleep-route" aria-label="\u4fdd\u6d3b\u52a8\u4f5c\u8def\u7ebf">
-          <span>\u952e\u9f20\u7a7a\u95f2</span>
-          <i />
-          <span>\u5de6\u4e0b\u89d2\u8f7b\u70b9</span>
-          <i />
-          <span>\u5149\u6807\u8fd8\u539f</span>
+          <label className="prevent-sleep-field">
+            <span>连点间隔</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              disabled={disabled}
+              value={settings.continuousIntervalSeconds}
+              onChange={updateSeconds("continuousIntervalSeconds")}
+              aria-label="连点间隔"
+            />
+            <em>秒</em>
+          </label>
         </div>
-      </div>
-    </SettingsSection>
+      </SettingsSection>
+    </>
   );
 }

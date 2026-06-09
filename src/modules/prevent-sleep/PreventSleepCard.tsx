@@ -9,25 +9,42 @@ type PreventSleepState = {
   lastActionAt: string | null;
   lastPulseAt: string | null;
   runtimeError: string | null;
+  isDegraded: boolean;
+  degradeReason: string | null;
+  hotkeyArmed: boolean;
+  clickingActive: boolean;
 };
 
 type PreventSleepSettings = {
-  idleThresholdSeconds?: number;
+  clickMode?: "idle-keepalive" | "continuous";
+  idleActivationSeconds?: number;
+  idleRepeatSeconds?: number;
+  continuousIntervalSeconds?: number;
+  continuousHotkey?: string;
 };
 
 type PreventSleepStatus = {
   enabled: boolean;
   lastPulseAt: string | null;
   error: string | null;
+  degraded: boolean;
+  degradeReason: string | null;
+  hotkeyArmed: boolean;
+  clickingActive: boolean;
 };
 
-const DEFAULT_IDLE_THRESHOLD_SECONDS = 150;
-const STATUS_IDLE = "\u5f85\u547d";
-const STATUS_RUNNING = "\u540e\u53f0\u4fdd\u6d3b\u4e2d";
-const STATUS_START_FAILED = "\u542f\u52a8\u5931\u8d25";
-const STATUS_STOP_FAILED = "\u5173\u95ed\u5931\u8d25";
-const ERROR_FALLBACK = "\u9632\u6b62\u4f11\u7720\u542f\u52a8\u5931\u8d25";
-const SWITCH_LABEL = "\u9632\u6b62\u4f11\u7720";
+const DEFAULT_CLICK_MODE = "idle-keepalive";
+const DEFAULT_IDLE_ACTIVATION_SECONDS = 150;
+const DEFAULT_IDLE_REPEAT_SECONDS = 5;
+const DEFAULT_CONTINUOUS_INTERVAL_SECONDS = 1;
+const DEFAULT_CONTINUOUS_HOTKEY = "PgDn";
+const STATE_IDLE = "idle";
+const STATE_RUNNING = "running";
+const STATE_DEGRADED = "degraded";
+const STATE_ERROR = "error";
+const ERROR_FALLBACK = "防止休眠启动失败";
+const SWITCH_LABEL = "防止休眠";
+const DEGRADED_FALLBACK = "已降级为鼠标保活";
 
 function readableError(error: unknown) {
   if (error instanceof Error) {
@@ -41,12 +58,16 @@ function readableError(error: unknown) {
   return ERROR_FALLBACK;
 }
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+function statusMessage(state: PreventSleepState) {
+  if (state.runtimeError) {
+    return state.runtimeError;
+  }
+
+  if (state.isDegraded) {
+    return state.degradeReason ?? DEGRADED_FALLBACK;
+  }
+
+  return "";
 }
 
 export function PreventSleepCard({
@@ -62,15 +83,16 @@ export function PreventSleepCard({
   const [isSwitching, setIsSwitching] = useState(false);
   const onPatchStateRef = useRef(onPatchState);
   const preventSleepSettings = settings as PreventSleepSettings;
-  const idleThresholdSeconds =
-    preventSleepSettings.idleThresholdSeconds ?? DEFAULT_IDLE_THRESHOLD_SECONDS;
-  const status = state.runtimeError
-    ? state.runtimeError
-    : isActive
-      ? state.lastPulseAt
-        ? `\u6700\u8fd1\u4fdd\u6d3b ${formatTime(state.lastPulseAt)}`
-        : STATUS_RUNNING
-      : STATUS_IDLE;
+  const clickMode = preventSleepSettings.clickMode ?? DEFAULT_CLICK_MODE;
+  const idleActivationSeconds =
+    preventSleepSettings.idleActivationSeconds ?? DEFAULT_IDLE_ACTIVATION_SECONDS;
+  const idleRepeatSeconds =
+    preventSleepSettings.idleRepeatSeconds ?? DEFAULT_IDLE_REPEAT_SECONDS;
+  const continuousIntervalSeconds =
+    preventSleepSettings.continuousIntervalSeconds ?? DEFAULT_CONTINUOUS_INTERVAL_SECONDS;
+  const continuousHotkey =
+    preventSleepSettings.continuousHotkey ?? DEFAULT_CONTINUOUS_HOTKEY;
+  const message = statusMessage(state);
 
   useEffect(() => {
     onPatchStateRef.current = onPatchState;
@@ -92,15 +114,21 @@ export function PreventSleepCard({
         onPatchStateRef.current({
           enabled: nextStatus.enabled,
           runtimeError: nextStatus.error,
+          isDegraded: nextStatus.degraded,
+          degradeReason: nextStatus.degradeReason,
+          hotkeyArmed: nextStatus.hotkeyArmed,
+          clickingActive: nextStatus.clickingActive,
           status: nextStatus.error
-            ? STATUS_START_FAILED
-            : nextStatus.enabled
-              ? STATUS_RUNNING
-              : STATUS_IDLE,
+            ? STATE_ERROR
+            : nextStatus.degraded
+              ? STATE_DEGRADED
+              : nextStatus.enabled
+                ? STATE_RUNNING
+                : STATE_IDLE,
           lastPulseAt: nextStatus.lastPulseAt,
         });
       } catch {
-        // Status polling is best-effort; switch actions still surface hard failures.
+        // Polling is best-effort; command failures still surface immediately.
       }
     };
 
@@ -112,6 +140,66 @@ export function PreventSleepCard({
       window.clearInterval(interval);
     };
   }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive || isSwitching) {
+      return;
+    }
+
+    let cancelled = false;
+    const syncConfiguration = async () => {
+      try {
+        const nextStatus = await invoke<PreventSleepStatus>("prevent_sleep_set_enabled", {
+          request: {
+            enabled: true,
+            clickMode,
+            idleActivationSeconds,
+            idleRepeatSeconds,
+            continuousIntervalSeconds,
+            continuousHotkey,
+          },
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        onPatchStateRef.current({
+          enabled: nextStatus.enabled,
+          runtimeError: nextStatus.error,
+          isDegraded: nextStatus.degraded,
+          degradeReason: nextStatus.degradeReason,
+          hotkeyArmed: nextStatus.hotkeyArmed,
+          clickingActive: nextStatus.clickingActive,
+          status: nextStatus.error
+            ? STATE_ERROR
+            : nextStatus.degraded
+              ? STATE_DEGRADED
+              : nextStatus.enabled
+                ? STATE_RUNNING
+                : STATE_IDLE,
+          lastActionAt: new Date().toISOString(),
+          lastPulseAt: nextStatus.lastPulseAt,
+        });
+      } catch {
+        // Best-effort reconfiguration; the main toggle path still surfaces hard failures.
+      }
+    };
+
+    void syncConfiguration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isActive,
+    isSwitching,
+    clickMode,
+    idleActivationSeconds,
+    idleRepeatSeconds,
+    continuousIntervalSeconds,
+    continuousHotkey,
+  ]);
 
   const togglePreventSleep = async () => {
     if (isSwitching) {
@@ -125,14 +213,28 @@ export function PreventSleepCard({
       const nextStatus = await invoke<PreventSleepStatus>("prevent_sleep_set_enabled", {
         request: {
           enabled: nextEnabled,
-          idleThresholdSeconds,
+          clickMode,
+          idleActivationSeconds,
+          idleRepeatSeconds,
+          continuousIntervalSeconds,
+          continuousHotkey,
         },
       });
 
       onPatchState({
         enabled: nextStatus.enabled,
         runtimeError: nextStatus.error,
-        status: nextStatus.enabled ? STATUS_RUNNING : STATUS_IDLE,
+        isDegraded: nextStatus.degraded,
+        degradeReason: nextStatus.degradeReason,
+        hotkeyArmed: nextStatus.hotkeyArmed,
+        clickingActive: nextStatus.clickingActive,
+        status: nextStatus.error
+          ? STATE_ERROR
+          : nextStatus.degraded
+            ? STATE_DEGRADED
+            : nextStatus.enabled
+              ? STATE_RUNNING
+              : STATE_IDLE,
         lastActionAt: new Date().toISOString(),
         lastPulseAt: nextStatus.lastPulseAt,
       });
@@ -140,7 +242,11 @@ export function PreventSleepCard({
       onPatchState({
         enabled: isActive,
         runtimeError: readableError(error),
-        status: nextEnabled ? STATUS_START_FAILED : STATUS_STOP_FAILED,
+        isDegraded: false,
+        degradeReason: null,
+        hotkeyArmed: false,
+        clickingActive: false,
+        status: STATE_ERROR,
         lastActionAt: new Date().toISOString(),
       });
     } finally {
@@ -152,7 +258,7 @@ export function PreventSleepCard({
     <CardFrame
       accent={manifest.themeColor}
       title={manifest.title}
-      status={status}
+      status={message}
       icon={
         <div className="module-mark module-mark--sleep" aria-hidden="true">
           <i />
@@ -174,9 +280,12 @@ export function PreventSleepCard({
         <span />
         <span />
       </div>
-      {state.runtimeError ? (
-        <p className="prevent-sleep-error" role="status">
-          {state.runtimeError}
+      {message ? (
+        <p
+          className={state.runtimeError ? "prevent-sleep-error" : "prevent-sleep-degraded"}
+          role="status"
+        >
+          {message}
         </p>
       ) : null}
     </CardFrame>

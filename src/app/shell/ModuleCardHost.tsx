@@ -47,6 +47,7 @@ export function ModuleCardHost({ moduleDefinition }: ModuleCardHostProps) {
           moduleId={moduleDefinition.manifest.id}
           manifest={moduleDefinition.manifest}
           settings={settings}
+          disabled={Boolean((state as Record<string, unknown>).enabled)}
           onChange={updateSettings}
         />
       }

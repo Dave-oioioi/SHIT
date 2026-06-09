@@ -36,6 +36,7 @@ export type ModuleSettingsProps<TSettings = Record<string, unknown>> = {
   moduleId: ModuleId;
   manifest: ModuleManifest;
   settings: TSettings;
+  disabled?: boolean;
   onChange: (nextSettings: TSettings) => void;
 };
 

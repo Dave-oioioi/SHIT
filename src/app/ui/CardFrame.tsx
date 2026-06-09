@@ -72,9 +72,9 @@ export function CardFrame({
             data-expanded={isExpanded}
             onClick={onToggleExpand}
             aria-label={isExpanded ? "\u6536\u8d77\u8bbe\u7f6e" : "\u5c55\u5f00\u8bbe\u7f6e"}
+            aria-expanded={isExpanded}
           >
             <span className="card-frame__settings-glyph" aria-hidden="true">
-              <span />
               <span />
               <span />
             </span>
